@@ -1,0 +1,50 @@
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
+# ------------------------------------------------------------
+# Known constants (example values — replace with your measured ones)
+# ------------------------------------------------------------
+k_bleach = 1.2e3      # M^-1 s^-1
+O0 = 2.5e-4            # M (dissolved oxygen concentration)
+D0 = 1.0e-5            # M (initial dye concentration)
+A_tot = 5.0e-7         # M (total amino acid binding sites)
+
+# Experimental data (replace with your measured arrays)
+t_data = np.array([0, 10, 20, 30, 40, 50])   # time (s)
+B_data = np.array([0.0, 1.1e-9, 2.0e-9, 2.6e-9, 2.9e-9, 3.0e-9])  # measured B(t) (M or mol/L)
+
+# ------------------------------------------------------------
+# Theoretical model for B(t) (from derived equation)
+# ------------------------------------------------------------
+def B_model(t, k_bind):
+    lam = k_bind * D0 + k_bleach * O0
+    num = k_bleach * O0 * k_bind * D0 * A_tot
+    denom = (k_bind * D0 + k_bleach * O0)
+    term = t - (1 - np.exp(-lam * t)) / lam
+    return num / denom * term
+
+# ------------------------------------------------------------
+# Fit experimental B(t) data to extract k_bind
+# ------------------------------------------------------------
+popt, pcov = curve_fit(B_model, t_data, B_data, p0=[1e5])  # initial guess for k_bind
+k_bind_fit = popt[0]
+k_bind_err = np.sqrt(np.diag(pcov))[0]
+
+print(f"Fitted k_bind = {k_bind_fit:.3e} ± {k_bind_err:.3e} M^-1 s^-1")
+
+# ------------------------------------------------------------
+# Plot data vs. fitted model
+# ------------------------------------------------------------
+t_fit = np.linspace(0, max(t_data), 200)
+B_fit = B_model(t_fit, k_bind_fit)
+
+plt.figure(figsize=(6,4))
+plt.scatter(t_data, B_data, color='black', label='Measured Data')
+plt.plot(t_fit, B_fit, color='purple', label=f'Fit (k_bind = {k_bind_fit:.2e})')
+plt.xlabel('Time (s)')
+plt.ylabel('B(t) [M]')
+plt.title('Fit of B(t) vs. t to Extract k_bind')
+plt.legend()
+plt.tight_layout()
+plt.show()
